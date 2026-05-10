@@ -1,7 +1,5 @@
 # ai-util
 
-[![PyPI - Version](https://img.shields.io/pypi/v/ai-util.svg)](https://pypi.org/project/ai-util)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ai-util.svg)](https://pypi.org/project/ai-util)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **ai-util** 是一个实用、优雅的 AI 封装工具包，采用 OOP 风格设计，基于 OpenAI SDK 构建。让你用更少的代码、更清晰的接口与 AI 模型交互。
@@ -20,7 +18,7 @@
 ## 安装
 
 ```bash
-pip install ai-util
+pip install git+https://github.com/zaf-x/ai-util.git
 ```
 
 需要 Python 3.8+ 和 `openai>=1.0.0`。
@@ -292,7 +290,7 @@ ai-util/
 
 ```bash
 # 克隆项目
-git clone https://github.com/BaoShuWen/ai-util.git
+git clone https://github.com/zaf-x/ai-util.git
 cd ai-util
 
 # 安装开发依赖
@@ -311,4 +309,4 @@ pyright src/ai_util/
 
 `ai-util` 使用 MIT 许可证开源。
 
-版权所有 © 2026-present BaoShuWen
+版权所有 © 2026-present zaf-x
