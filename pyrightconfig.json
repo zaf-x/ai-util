@@ -1,0 +1,8 @@
+{
+    "typeCheckingMode": "strict",
+    "reportMissingTypeStubs": "information",
+    "reportUnknownParameterType": "error",
+    "reportUnknownArgumentType": "error",
+    "reportUnknownVariableType": "error",
+    "reportUnknownMemberType": "error"
+}
