@@ -28,3 +28,5 @@ Thumbs.db
 # Config with secrets
 .env
 *.pypirc
+
+github-hosts.txt

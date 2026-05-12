@@ -50,6 +50,7 @@ class AIBot:
         model: str = "gpt-4o",
         system_prompt: Optional[str] = None,
         max_tool_rounds: int = 10,
+        temperature: float = 0.7,
     ) -> None:
         """
         初始化 AI Bot
@@ -75,6 +76,7 @@ class AIBot:
 
         if system_prompt is not None:
             self.messages.append({"role": "system", "content": system_prompt})
+        self.temperature = temperature
 
     # ------------------------------------------------------------------
     # 内部工具方法
@@ -89,6 +91,7 @@ class AIBot:
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "messages": self.messages,
+            "temperature": self.temperature,
         }
         if tools is not None:
             kwargs["tools"] = tools
@@ -119,35 +122,34 @@ class AIBot:
 
     def _add_tool_results(
         self,
-        tool_calls_list: List[ToolCallDef],
+        tc_data: ToolCallDef,
         executor: Callable[[str, Dict[str, Any]], Any],
     ) -> None:
         """执行工具调用并将结果加入对话历史"""
-        for tc_data in tool_calls_list:
-            func_info = tc_data["function"]
-            name: str = func_info["name"]
-            raw_args: str = func_info["arguments"]
+        func_info = tc_data["function"]
+        name: str = func_info["name"]
+        raw_args: str = func_info["arguments"]
+        try:
+            args: Dict[str, Any] = json.loads(raw_args)
+        except json.JSONDecodeError as e:
+            args = {}
+            result: Any = {"error": f"JSON 解析失败: {e}"}
+        else:
             try:
-                args: Dict[str, Any] = json.loads(raw_args)
-            except json.JSONDecodeError as e:
-                args = {}
-                result: Any = {"error": f"JSON 解析失败: {e}"}
-            else:
-                try:
-                    result = executor(name, args)
-                except Exception as e:
-                    result = {"error": str(e)}
+                result = executor(name, args)
+            except Exception as e:
+                result = {"error": str(e)}
 
-            content_str: str = (
-                json.dumps(result, ensure_ascii=False)
-                if not isinstance(result, str)
-                else result
-            )
-            self.messages.append({
-                "role": "tool",
-                "tool_call_id": tc_data["id"],
-                "content": content_str,
-            })
+        content_str: str = (
+            json.dumps(result, ensure_ascii=False)
+            if not isinstance(result, str)
+            else result
+        )
+        self.messages.append({
+            "role": "tool",
+            "tool_call_id": tc_data["id"],
+            "content": content_str,
+        })
 
     # ------------------------------------------------------------------
     # 核心公开方法
@@ -238,6 +240,9 @@ class AIBot:
                 "role": "assistant",
                 "content": msg.content,
             }
+            rc = getattr(msg, "reasoning_content", None)
+            if rc:
+                assistant_msg["reasoning_content"] = rc
             if tool_calls_packed is not None:
                 assistant_msg["tool_calls"] = tool_calls_packed
             self.messages.append(assistant_msg)
@@ -251,7 +256,8 @@ class AIBot:
                 }
 
             # 执行工具调用
-            self._add_tool_results(tool_calls_packed, tool_executor)
+            for tc_data in tool_calls_packed:
+                self._add_tool_results(tc_data, tool_executor)
             rounds += 1
 
         return {
@@ -304,6 +310,7 @@ class AIBot:
         )
 
         collected_content = ""
+        collected_reasoning = ""
         collected_tool_calls: Dict[int, ToolCallDef] = {}
 
         for chunk in stream:
@@ -316,6 +323,12 @@ class AIBot:
             if delta.content:
                 collected_content += delta.content
                 yield {"type": "content", "data": delta.content}
+
+            # ---- 推理内容增量 ----
+            rc = getattr(delta, "reasoning_content", None)
+            if rc:
+                collected_reasoning += rc
+                yield {"type": "reasoning", "data": rc}
 
             # ---- 工具调用增量 ----
             if delta.tool_calls:
@@ -369,6 +382,8 @@ class AIBot:
             "role": "assistant",
             "content": collected_content or None,
         }
+        if collected_reasoning:
+            assistant_msg["reasoning_content"] = collected_reasoning
         if tool_calls_list:
             assistant_msg["tool_calls"] = tool_calls_list
         self.messages.append(assistant_msg)
@@ -383,8 +398,8 @@ class AIBot:
             yield {"type": "tool_call", "data": tc_data}
 
         if executor is not None:
-            self._add_tool_results(tool_calls_list, executor)
             for tc_data in tool_calls_list:
+                self._add_tool_results(tc_data, executor)
                 yield {
                     "type": "tool_result",
                     "data": {
