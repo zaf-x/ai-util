@@ -30,3 +30,4 @@ Thumbs.db
 *.pypirc
 
 github-hosts.txt
+tests/secret.py

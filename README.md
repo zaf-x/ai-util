@@ -11,6 +11,7 @@
 - **🔧 自动工具注册** — 装饰器注册工具函数，自动从类型注解推断参数 Schema
 - **🔄 自动工具循环** — `send_msg_with_tools` 一行搞定工具调用→执行→继续对话的完整循环
 - **🤖 Agent 高级封装** — `Agent` 类将 `AIBot` 与 `Tools` 绑定，简化调用
+- **🔒 内置沙箱工具** — `Sandbox` 提供安全的文件读写、系统命令、网络请求工具集，一键赋予 AI 环境交互能力
 - **📝 对话历史管理** — 自动维护消息列表，支持重置和导出
 - **🔗 兼容任意 OpenAI 接口** — 支持 DeepSeek、通义千问、GLM 等兼容 API
 
@@ -19,7 +20,7 @@
 ## 安装
 
 ```bash
-pip install git+https://github.com/zaf-x/ai-util.git
+pip install git+https://github.com/BaoShuWen/ai-util.git
 ```
 
 需要 Python 3.8+ 和 `openai>=1.0.0`。
@@ -96,6 +97,24 @@ for event in agent.stream_msg("上海天气怎么样？"):
         print(f"\n[正在调用 {event['data']['function']['name']}]")
     elif event["type"] == "tool_result":
         print(f"\n[工具返回: {event['data']['result']}]")
+```
+
+### 使用沙箱工具（赋予 AI 环境交互能力）
+
+```python
+from ai_util import AIBot, Tools, Agent, Sandbox
+
+# 创建沙箱，限制在 /home/user/workspace 目录内
+tools = Tools()
+sandbox = Sandbox("/home/user/workspace")
+sandbox.register_tools(tools)
+
+bot = AIBot(api_key="sk-xxx", model="gpt-4o")
+agent = Agent(bot=bot, tools=tools)
+
+# AI 现在可以读取、编辑文件，发送 HTTP 请求，运行系统命令
+result = agent.send_msg("请读取 main.py 的内容，并告诉我它的作用")
+print(result["content"])
 ```
 
 ---
@@ -268,8 +287,8 @@ for event in agent.stream_msg("上海天气怎么样？"):
 3.  {type: "content",        data: "北京的天气。"}
 4.  {type: "tool_call_delta", data: {index: 0, id: "call_1", name: "get_", arguments: ""}}
 5.  {type: "tool_call_delta", data: {index: 0, id: "", name: "weather", arguments: '{"city": "'}}
-6.  {type: "tool_call_delta", data: {index: 0, id: "", name: "", arguments: '北京"}'}}
-7.  {type: "tool_call",       data: {id: "call_1", function: {name: "get_weather", arguments: '{"city": "北京"}'}}}
+6.  {type: "tool_call_delta", data: {index: 0, id: "", name: "", arguments: '北京"'}'}
+7.  {type: "tool_call",       data: {id: "call_1", function: {name: "get_weather", arguments: '{"city": "北京"'}'}}}
 8.  {type: "tool_result",     data: {name: "get_weather", result: "北京: 晴, 22°C"}}
     ── 工具执行完毕，自动继续调用 API ──
 9.  {type: "content",        data: "北京当前天气晴朗"}
@@ -346,6 +365,7 @@ AIBot(
     model: str = "gpt-4o",              # 模型名称
     system_prompt: str | None = None,    # 系统提示词
     max_tool_rounds: int = 10,           # 最大工具调用轮次，防死循环
+    temperature: float = 0.7,            # 采样温度，控制生成随机性（0~2）
 )
 ```
 
@@ -449,7 +469,7 @@ def get_weather(city: str) -> str:
     description="获取天气信息",          # 自定义描述
     parameters={...},                   # 自定义 JSON Schema
 )
-def my_weather(city: str) -> str:
+def get_weather(city: str) -> str:
     ...
 ```
 
@@ -486,6 +506,101 @@ Tool(
 
 - `tool.definition()` — 生成单条 OpenAI 工具定义
 - `tool.execute(**kwargs)` — 执行工具
+
+---
+
+### Sandbox
+
+`Sandbox` 是内置的沙箱工具集，提供文件读写、系统命令执行、HTTP 请求等常用环境交互能力。通过 `register_tools(tools)` 可一键将所有沙箱工具注册到 `Tools` 实例中，让 AI 获得与本地环境交互的能力。
+
+#### 初始化
+
+```python
+Sandbox(
+    sandbox_dir: str,                          # 沙箱根目录
+    allow_file_access: bool = True,            # 是否允许文件访问
+    allow_network_access: bool = True,         # 是否允许网络访问
+    allow_raw_network_data: bool = True,       # 是否允许原始网络数据读写
+    allow_syscmd_access: bool = False,         # 是否允许系统命令执行
+    file_access_mode: int = 1,                 # 0: 仅沙箱内, 1: 渐进式, 2: 完全访问
+    file_progressive_access_mode: int = 0,     # 0: 白名单, 1: 黑名单（仅在 mode=1 时生效）
+    file_progressive_access_list: list = [],   # 渐进式访问的文件路径列表
+)
+```
+
+#### 文件访问模式
+
+| 模式 | 值 | 说明 |
+|------|-----|------|
+| **仅沙箱** | `0` | 只能访问 `sandbox_dir` 目录下的文件（最安全） |
+| **渐进式** | `1` | 结合白名单/黑名单控制额外访问路径 |
+| **完全访问** | `2` | 可以访问系统中任何路径（最灵活，风险最高） |
+
+#### 注册沙箱工具
+
+```python
+from ai_util import AIBot, Tools, Agent, Sandbox
+
+tools = Tools()
+sandbox = Sandbox("/home/user/project", allow_syscmd_access=True)
+sandbox.register_tools(tools)
+
+agent = Agent(bot=AIBot(model="gpt-4o"), tools=tools)
+```
+
+#### 沙箱工具列表
+
+注册后，AI 可以使用以下工具：
+
+| 工具名 | 说明 | 所需权限 |
+|--------|------|---------|
+| `read_file` | 读取文件内容 | 文件读取 |
+| `readlines` | 读取指定行范围 | 文件读取 |
+| `write_file` | 写入/覆盖文件 | 文件写入 |
+| `write_lines` | 在指定位置覆盖多行 | 文件写入 |
+| `insert_lines` | 在指定行前插入内容 | 文件写入 |
+| `run_syscmd` | 运行系统命令 | `allow_syscmd_access=True` |
+| `get_request` | 发送 HTTP GET | `allow_raw_network_data=True` |
+| `head_request` | 发送 HTTP HEAD | `allow_raw_network_data=True` |
+| `post_request` | 发送 HTTP POST | `allow_raw_network_data=True` |
+| `put_request` | 发送 HTTP PUT | `allow_raw_network_data=True` |
+| `delete_request` | 发送 HTTP DELETE | `allow_raw_network_data=True` |
+| `options_request` | 发送 HTTP OPTIONS | `allow_raw_network_data=True` |
+| `listdir` | 列出目录下的文件和子目录 | 文件读取 |
+| `get_sandbox_dir` | 获取当前沙箱根目录路径 | 无（仅返回配置信息） |
+
+#### 示例：安全的代码审查助手
+
+```python
+from ai_util import AIBot, Tools, Agent, Sandbox
+
+# 限制 AI 只能读取项目目录，禁止网络和系统命令
+tools = Tools()
+sandbox = Sandbox(
+    "/home/user/my-project",
+    allow_file_access=True,
+    allow_network_access=False,
+    allow_syscmd_access=False,
+)
+sandbox.register_tools(tools)
+
+bot = AIBot(api_key="sk-xxx", model="gpt-4o", system_prompt="你是一个代码审查助手。")
+agent = Agent(bot=bot, tools=tools)
+
+# AI 只能读取 my-project 目录下的文件，无法访问网络或执行命令
+result = agent.send_msg("请审查 main.py 和 utils.py 的代码质量")
+print(result["content"])
+```
+
+#### 示例：允许网络请求的开发助手
+
+```python
+sandbox = Sandbox(
+    "/home/user/workspace",
+    allow_syscmd_access=True,           # 允许运行 git、npm 等命令
+    allow_raw_network_data=True,        # 允许调用 API、下载依赖
+)
+```
 
 ---
 
@@ -550,16 +665,14 @@ def get_weather(city: str, units: str = "celsius") -> str:
 ai-util/
 ├── src/
 │   └── ai_util/
-│       ├── __init__.py       # 包入口，导出 AIBot, Tool, Tools, Agent
+│       ├── __init__.py       # 包入口，导出 AIBot, Tool, Tools, Agent, Sandbox
 │       ├── __about__.py      # 版本信息
 │       ├── agent.py          # Agent 高级封装
 │       ├── bot.py            # AIBot 主类
-│       └── tools.py          # Tools 工具封装
+│       ├── tools.py          # Tools 工具封装
+│       └── sandbox.py        # Sandbox 沙箱工具集
 ├── tests/
-│   ├── __init__.py
-│   ├── test_agent.py         # Agent 集成测试
-│   ├── test_bot.py           # AIBot 单元测试（mock）
-│   └── test_tools.py         # Tools 单元测试
+│   └── test_agent_sandbox.py # Agent + Sandbox 集成测试
 ├── pyproject.toml
 ├── pyrightconfig.json        # Strict 模式配置
 └── README.md
@@ -571,7 +684,7 @@ ai-util/
 
 ```bash
 # 克隆项目
-git clone https://github.com/zaf-x/ai-util.git
+git clone https://github.com/BaoShuWen/ai-util.git
 cd ai-util
 
 # 安装开发依赖
@@ -590,4 +703,4 @@ pyright src/ai_util/
 
 `ai-util` 使用 MIT 许可证开源。
 
-版权所有 © 2026-present zaf-x
+版权所有 © 2026-present BaoShuWen

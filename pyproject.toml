@@ -24,7 +24,10 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["openai>=1.0.0"]
+dependencies = [
+  "openai>=1.0.0",
+  "requests>=2.26.0",
+]
 
 [project.urls]
 Documentation = "https://github.com/BaoShuWen/ai-util#readme"

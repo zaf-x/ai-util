@@ -9,10 +9,12 @@ ai-util: 实用 AI 封装工具包
 from ai_util.bot import AIBot
 from ai_util.agent import Agent
 from ai_util.tools import Tool, Tools
+from ai_util.sandbox import Sandbox
 
 __all__ = [
     "AIBot",
     "Tool",
     "Tools",
     "Agent",
+    "Sandbox",
 ]

@@ -1,3 +1,0 @@
-# SPDX-FileCopyrightText: 2026-present BaoShuWen <baoshuwen2013@outlook.com>
-#
-# SPDX-License-Identifier: MIT
