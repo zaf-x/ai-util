@@ -1,5 +1,5 @@
 # ai-util
-
+# English version readme -> [README_EN.md](README_EN.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **ai-util** 是一个实用、优雅的 AI 封装工具包，采用 OOP 风格设计，基于 OpenAI SDK 构建。让你用更少的代码、更清晰的接口与 AI 模型交互。
