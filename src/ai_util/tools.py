@@ -262,6 +262,10 @@ class Tools:
         """移除指定工具"""
         self._tools.pop(name, None)
 
+    def list_tools(self) -> List[str]:
+        """Return a list of registered tool names."""
+        return list(self._tools.keys())
+
     def get(self, name: str) -> Optional[Tool]:
         """获取指定工具"""
         return self._tools.get(name)

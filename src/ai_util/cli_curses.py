@@ -112,7 +112,7 @@ def _handle_command(cmd: str, agent: Agent) -> Optional[str]:
         return "__clear__"
 
     elif command == "/tools":
-        tool_names = list(agent.tools._tools.keys())
+        tool_names = agent.tools.list_tools()
         if tool_names:
             return "Registered tools:\n  " + "\n  ".join(tool_names)
         return "No tools registered."
@@ -216,7 +216,10 @@ def _run(stdscr: curses.window, agent: Agent) -> None:
             if cmd == "":
                 continue
 
-            if cmd.startswith("/"):
+            if cmd.startswith("//"):
+                # Literal text starting with /: strip one / and send to AI
+                cmd = cmd[1:]
+            elif cmd.startswith("/"):
                 result = _handle_command(cmd, agent)
                 if result == "__clear__":
                     message_log.clear()
@@ -250,6 +253,21 @@ def _run(stdscr: curses.window, agent: Agent) -> None:
                             streaming_idx = len(message_log) - 1
                         else:
                             message_log[streaming_idx] = (collected, False)
+                        _draw_chat(stdscr, message_log, scroll_offset, chat_h, w)
+                        stdscr.refresh()
+                    elif event["type"] == "tool_call":
+                        name = event["data"]["function"]["name"]
+                        message_log.append((f"[⚙ calling {name}...]", False))
+                        _draw_chat(stdscr, message_log, scroll_offset, chat_h, w)
+                        stdscr.refresh()
+                    elif event["type"] == "tool_result":
+                        name = event["data"]["name"]
+                        # Replace the last "[⚙ calling...]" line with a done message
+                        for i in range(len(message_log) - 1, -1, -1):
+                            txt, _ = message_log[i]
+                            if txt.startswith("[⚙") and name in txt:
+                                message_log[i] = (f"[✅ {name} completed]", False)
+                                break
                         _draw_chat(stdscr, message_log, scroll_offset, chat_h, w)
                         stdscr.refresh()
                     elif event["type"] == "error":
