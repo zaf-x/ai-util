@@ -29,6 +29,15 @@ dependencies = [
   "requests>=2.26.0",
 ]
 
+[project.scripts]
+ai-chat = "ai_util.cli:main"
+
+[project.optional-dependencies]
+cli = [
+  "rich>=13.0.0",
+  "tomli>=1.1.0; python_version < '3.11'",
+]
+
 [project.urls]
 Documentation = "https://github.com/BaoShuWen/ai-util#readme"
 Issues = "https://github.com/BaoShuWen/ai-util/issues"
