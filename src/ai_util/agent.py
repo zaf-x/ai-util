@@ -54,7 +54,10 @@ class Agent:
             {"content": str, "finish_reason": str, "tool_rounds": int}
         """
         result = self.bot.send_msg_with_tools(msg, self.tools)
-        if self.on_message is not None:
+        if result.get("finish_reason") == "max_rounds":
+            if self.on_error is not None:
+                self.on_error(f"Reached max tool rounds ({result.get('tool_rounds', '?')})")
+        elif self.on_message is not None:
             self.on_message({
                 "role": "assistant",
                 "content": result.get("content", ""),
@@ -136,8 +139,18 @@ class Agent:
         """Load a conversation from a JSON file."""
         import json
 
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, UnicodeDecodeError, FileNotFoundError) as e:
+            raise ValueError(f"Invalid conversation file {path!r}: {e}") from e
+
+        if not isinstance(data, dict):
+            raise ValueError(f"Expected root object, got {type(data).__name__}")
+
+        version = data.get("version", 1)
+        if not isinstance(version, int) or version > 1:
+            raise ValueError(f"Unsupported conversation version {version}")
 
         messages: List[Dict[str, Any]] = []
         if data.get("system_prompt"):
@@ -150,7 +163,7 @@ class Agent:
         if data.get("temperature") is not None:
             self.bot.temperature = data["temperature"]
 
-    def add_tool(self, func=None, *, name=None, description=None, parameters=None):
+    def add_tool(self, func=None, *, name=None, description=None, parameters=None) -> Callable[..., Any]:
         """Register a tool. Works as a decorator or direct call."""
         return self.tools.add(
             func, name=name, description=description, parameters=parameters
@@ -163,6 +176,6 @@ class Agent:
     def __repr__(self) -> str:
         return (
             f"Agent(bot={self.bot.model!r}, "
-            f"tools={list(self.tools._tools.keys())}, "
+            f"tools={repr(self.tools)}, "
             f"messages={len(self.bot.messages)})"
         )
