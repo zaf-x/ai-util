@@ -3,7 +3,15 @@ Tools - 便捷的 AI 工具封装
 
 提供干净的方式来定义、注册和执行 AI 工具。
 既支持装饰器模式，也支持手动注册，自动生成 OpenAI 兼容的 tool definitions。
+
+Exports:
+    Tool, Tools
 """
+
+__all__ = [
+    "Tool",
+    "Tools",
+]
 
 import inspect
 from typing import (
@@ -12,7 +20,7 @@ from typing import (
     Dict,
     List,
     Optional,
-get_type_hints,
+    get_type_hints,
 )
 
 

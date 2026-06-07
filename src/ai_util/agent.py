@@ -1,3 +1,14 @@
+"""
+Agent - High-level AIBot + Tools wrapper
+
+Exports:
+    Agent
+"""
+
+__all__ = [
+    "Agent",
+]
+
 from .tools import Tools
 from .bot import AIBot
 

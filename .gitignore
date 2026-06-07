@@ -31,3 +31,6 @@ Thumbs.db
 
 github-hosts.txt
 tests/secret.py
+
+# Worktrees
+.worktrees/

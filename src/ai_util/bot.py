@@ -6,7 +6,14 @@ Features:
   - send_msg_with_tools: 发送消息并自动执行工具调用循环
   - stream_output: 流式响应，同时支持文本流 + 工具调用流
   - 自动管理对话历史
+
+Exports:
+    AIBot
 """
+
+__all__ = [
+    "AIBot",
+]
 
 import json
 from openai import OpenAI

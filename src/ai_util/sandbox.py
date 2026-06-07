@@ -1,3 +1,14 @@
+"""
+Sandbox - Sandboxed toolset for AI agents
+
+Exports:
+    Sandbox
+"""
+
+__all__ = [
+    "Sandbox",
+]
+
 from datetime import datetime
 import os
 from pathlib import Path
@@ -272,103 +283,40 @@ class Sandbox:
 
         return output
     
-    def get_request(self, url: str) -> str:
-        """
-        发送 GET 请求，返回响应内容。
-
-        :param url: 请求 URL
-        :return: 响应内容
-        """
+    def _request(self, method: str, url: str, **kwargs) -> str:
+        """Internal: send an HTTP request and return the response text."""
         if not self.allow_network_access or not self.allow_raw_network_data:
             return "网络数据访问被拒绝"
 
         try:
-            response = requests.get(url)
+            response = getattr(requests, method)(url, **kwargs)
             return response.text
         except requests.exceptions.RequestException as e:
             return str(e)
+
+    def get_request(self, url: str) -> str:
+        """发送 GET 请求，返回响应内容。"""
+        return self._request("get", url)
 
     def head_request(self, url: str) -> str:
-        """
-        发送 HEAD 请求，返回响应内容。
-
-        :param url: 请求 URL
-        :return: 响应内容
-        """
-        if not self.allow_network_access or not self.allow_raw_network_data:
-            return "网络数据访问被拒绝"
-
-        try:
-            response = requests.head(url)
-            return response.text
-        except requests.exceptions.RequestException as e:
-            return str(e)
+        """发送 HEAD 请求，返回响应内容。"""
+        return self._request("head", url)
 
     def post_request(self, url: str, data: dict[str, str]) -> str:
-        """
-        发送 POST 请求，返回响应内容。
-
-        :param url: 请求 URL
-        :param data: 请求数据（键值对）
-        :return: 响应内容
-        """
-        if not self.allow_network_access or not self.allow_raw_network_data:
-            return "网络数据访问被拒绝"
-
-        try:
-            response = requests.post(url, data=data)
-            return response.text
-        except requests.exceptions.RequestException as e:
-            return str(e)
+        """发送 POST 请求，返回响应内容。"""
+        return self._request("post", url, data=data)
 
     def put_request(self, url: str, data: dict[str, str]) -> str:
-        """
-        发送 PUT 请求，返回响应内容。
-
-        :param url: 请求 URL
-        :param data: 请求数据（键值对）
-        :return: 响应内容
-        """
-        if not self.allow_network_access or not self.allow_raw_network_data:
-            return "网络数据访问被拒绝"
-
-        try:
-            response = requests.put(url, data=data)
-            return response.text
-        except requests.exceptions.RequestException as e:
-            return str(e)
+        """发送 PUT 请求，返回响应内容。"""
+        return self._request("put", url, data=data)
 
     def delete_request(self, url: str) -> str:
-        """
-        发送 DELETE 请求，返回响应内容。
-
-        :param url: 请求 URL
-        :return: 响应内容
-        """
-        if not self.allow_network_access or not self.allow_raw_network_data:
-            return "网络数据访问被拒绝"
-
-        try:
-            response = requests.delete(url)
-            return response.text
-        except requests.exceptions.RequestException as e:
-            return str(e)
+        """发送 DELETE 请求，返回响应内容。"""
+        return self._request("delete", url)
 
     def options_request(self, url: str) -> str:
-        """
-        发送 OPTIONS 请求，返回响应内容。
-
-        :param url: 请求 URL
-        :return: 响应内容
-        """
-        if not self.allow_network_access or not self.allow_raw_network_data:
-            return "网络数据访问被拒绝"
-
-        try:
-            response = requests.options(url)
-            return response.text
-        except requests.exceptions.RequestException as e:
-            return str(e)
+        """发送 OPTIONS 请求，返回响应内容。"""
+        return self._request("options", url)
         
     def get_sandbox_dir(self) -> str:
         """
