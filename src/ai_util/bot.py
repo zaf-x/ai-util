@@ -147,15 +147,19 @@ class AIBot:
             except Exception as e:
                 result = {"error": str(e)}
 
-        content_str: str = (
-            json.dumps(result, ensure_ascii=False)
-            if not isinstance(result, str)
-            else result
-        )
+        # 支持多模态返回：如果结果是带 __multimodal__ 标记的 dict，直接用 content list
+        if isinstance(result, dict) and result.get("__multimodal__"):
+            content: Any = result.get("content", str(result))
+        else:
+            content = (
+                json.dumps(result, ensure_ascii=False)
+                if not isinstance(result, str)
+                else result
+            )
         self.messages.append({
             "role": "tool",
             "tool_call_id": tc_data["id"],
-            "content": content_str,
+            "content": content,
         })
 
     # ------------------------------------------------------------------
@@ -245,8 +249,9 @@ class AIBot:
             # 存入助手消息
             assistant_msg: Message = {
                 "role": "assistant",
-                "content": msg.content,
             }
+            if msg.content:
+                assistant_msg["content"] = msg.content
             rc = getattr(msg, "reasoning_content", None)
             if rc:
                 assistant_msg["reasoning_content"] = rc
@@ -387,8 +392,9 @@ class AIBot:
 
         assistant_msg: Message = {
             "role": "assistant",
-            "content": collected_content or None,
         }
+        if collected_content:
+            assistant_msg["content"] = collected_content
         if collected_reasoning:
             assistant_msg["reasoning_content"] = collected_reasoning
         if tool_calls_list:
